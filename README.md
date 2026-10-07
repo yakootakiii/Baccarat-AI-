@@ -18,17 +18,51 @@ Neither model beats the baseline. Their log loss is no better than predicting th
 
 The statistical tests agree. The previous outcome doesn't affect the next one (chi-square p = 0.21). Streaks are 0.04 percentage points longer than chance, which is far too small to profit from.
 
-## How to run it
+## Quick start: run the website with the saved model
 
-You'll need Python 3.10 or newer. On macOS, LightGBM also needs the OpenMP library: `brew install libomp`.
+The trained model is saved in the repo as `models/model.joblib`, so you don't need the dataset or any training to use the website. You'll need Python 3.10 or newer and git.
+
+1. Get the code:
+
+   ```bash
+   git clone https://github.com/yakootakiii/Baccarat-AI-.git
+   cd Baccarat-AI-
+   ```
+
+2. Create a virtual environment and activate it:
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate        # Windows: .venv\Scripts\activate
+   ```
+
+3. Install the dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   `requirements.txt` pins `scikit-learn==1.9.1`, the version that saved the model. A different version may refuse to load it.
+
+4. Start the website:
+
+   ```bash
+   flask --app app run --port 5001
+   ```
+
+5. Open http://127.0.0.1:5001 in your browser. On macOS, port 5000 (Flask's default) is taken by AirPlay Receiver, which is why this uses 5001.
+
+6. Stop the server with Ctrl+C when you're done.
+
+See [Using the website](#using-the-website) below for what to do on the page.
+
+## Reproduce the results from scratch
+
+These steps download the dataset, rerun the tests and retrain the model, which overwrites `models/model.joblib`. On macOS, LightGBM needs the OpenMP library first: `brew install libomp`.
 
 ### 1. Set up
 
-```bash
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
+Do steps 1–3 of the quick start above.
 
 ### 2. Download the dataset
 
@@ -65,13 +99,10 @@ This trains both models on 80% of the shoes, tests them on the other 20%, and sa
 
 ### 6. Start the website
 
-```bash
-flask --app app run --port 5001
-```
+Do steps 4–5 of the quick start. The website now uses your newly trained model.
 
-Open http://127.0.0.1:5001. On macOS, port 5000 (the Flask default) is taken by AirPlay Receiver, hence 5001. The website needs a trained model, so do step 5 first.
+## Using the website
 
-**Using it:**
 1. Paper-bet 1 unit on the bet shown.
 2. When the hand is over, tap who won. The shortcuts are **B**, **P** and **T**, and **U** undoes the last entry.
 3. Tap **Dealer started a new shoe** when the dealer does.
@@ -83,7 +114,7 @@ The page compares the model's running total with always betting Banker. Track at
 ```
 data/raw/          dataset (git-ignored)
 data/hands.csv     one row per hand: shoe_id, hand_no, outcome (git-ignored)
-models/            trained model (git-ignored)
+models/            saved model (model.joblib), used by the website
 src/
   prepare_data.py  raw JSON -> hands.csv
   stats_tests.py   transition (chi-square) and runs tests
