@@ -5,29 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Baccarat Model Tracker</title>
 <style>
-  :root { --b:#c0392b; --p:#2463eb; --t:#1e9e5a; --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#6b7280; }
+  :root { --b:#c0392b; --p:#2463eb; --t:#1e9e5a; --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#6b7280; --accent:#1d2330; }
   * { box-sizing: border-box; }
   body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
   main { max-width: 560px; margin: 0 auto; padding: 16px; }
   h1 { font-size: 1.3rem; margin: 8px 0 4px; }
   .note { color: var(--muted); font-size: .85rem; margin: 0 0 16px; }
   .card { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card.now { border: 2px solid var(--accent); }
   .label { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 8px; }
+
+  /* "What to do now" steps */
+  .step { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+  .step + .step { margin-top: 16px; padding-top: 16px; border-top: 1px solid #eef0f3; }
+  .num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: .9rem; }
+  .step-title { font-weight: 600; margin: 3px 0 8px; }
   .bet { font-size: 1.6rem; font-weight: 700; }
-  .probs { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 12px; text-align: center; }
+  .bet.B { color: var(--b); } .bet.P { color: var(--p); } .bet.T { color: var(--t); }
+  .why { color: var(--muted); font-size: .85rem; margin-top: 4px; }
+  .probs { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 10px; text-align: center; }
   .probs div { background: var(--bg); border-radius: 8px; padding: 8px; font-size: .9rem; }
+  .probs div.pick { outline: 2px solid currentColor; }
+
   .buttons { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-  button { border: 0; border-radius: 10px; padding: 14px 8px; font-size: 1rem; font-weight: 600; cursor: pointer; color: #fff; }
+  button { border: 0; border-radius: 10px; padding: 14px 8px; font-size: 1rem; font-weight: 600; cursor: pointer; color: #fff; font-family: inherit; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
   .btn-B { background: var(--b); } .btn-P { background: var(--p); } .btn-T { background: var(--t); }
-  .row { display: flex; gap: 8px; margin-top: 8px; }
-  .secondary { background: #e5e7eb; color: var(--text); flex: 1; }
+  kbd { display: block; font: 400 .7rem system-ui, sans-serif; opacity: .8; margin-top: 2px; }
+  .secondary { background: #e5e7eb; color: var(--text); padding: 10px 14px; font-size: .9rem; }
+
+  .status { padding: 10px 12px; border-radius: 8px; font-size: .9rem; margin-bottom: 12px; display: none; }
+  .status.show { display: block; }
+  .status.error { background: #fdecea; color: #8a1f15; }
+  .status.loading { background: #eef2ff; color: #2f3c8f; }
+
+  .last { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: .9rem; }
+  .last .detail { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+
+  .shoe-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .shoe-head .label { margin: 0; }
   .history { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; }
+  .empty { color: var(--muted); font-size: .85rem; }
   .dot { width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: .7rem; display: grid; place-items: center; font-weight: 700; }
   .dot.B { background: var(--b); } .dot.P { background: var(--p); } .dot.T { background: var(--t); }
+
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat { background: var(--bg); border-radius: 8px; padding: 10px; }
   .stat .v { font-size: 1.3rem; font-weight: 700; }
+  .stat .note { margin: 4px 0 0; }
   .pos { color: var(--t); } .neg { color: var(--b); }
+  .verdict { margin: 10px 0 0; }
 </style>
 </head>
 <body>
@@ -35,45 +62,69 @@
   <h1>Baccarat Model Tracker</h1>
   <p class="note">Paper trading only. Compares the model's picks against "always Banker."</p>
 
-  <div class="card">
-    <div class="label">Model suggests for next hand</div>
-    <div class="bet" id="bet">…</div>
-    <div class="probs" id="probs"></div>
+  <div class="status" id="status"></div>
+
+  <div class="card now">
+    <div class="label">What to do now · hand <span id="handNo">1</span> of this shoe</div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div>
+        <div class="step-title">Paper bet 1 unit on:</div>
+        <div class="bet" id="bet">…</div>
+        <div class="why" id="why"></div>
+        <div class="probs" id="probs"></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div>
+        <div class="step-title">When the hand is over, tap who won:</div>
+        <div class="buttons">
+          <button class="btn-B" data-outcome="B">Banker<kbd>key B</kbd></button>
+          <button class="btn-P" data-outcome="P">Player<kbd>key P</kbd></button>
+          <button class="btn-T" data-outcome="T">Tie<kbd>key T</kbd></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="lastCard" hidden>
+    <div class="last">
+      <div>
+        <div id="lastText"></div>
+        <div class="detail" id="lastDetail"></div>
+      </div>
+      <button class="secondary" onclick="undo()" title="Shortcut: U">Undo</button>
+    </div>
   </div>
 
   <div class="card">
-    <div class="label">Enter result of the hand that just finished</div>
-    <div class="buttons">
-      <button class="btn-B" onclick="record('B')">Banker</button>
-      <button class="btn-P" onclick="record('P')">Player</button>
-      <button class="btn-T" onclick="record('T')">Tie</button>
+    <div class="shoe-head">
+      <div class="label">Current shoe (<span id="shoeCount">0</span> hands)</div>
+      <button class="secondary" onclick="newShoe()">Dealer started a new shoe</button>
     </div>
-    <div class="row">
-      <button class="secondary" onclick="undo()">Undo</button>
-      <button class="secondary" onclick="newShoe()">New shoe</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="label">Current shoe (<span id="shoeCount">0</span> hands)</div>
     <div class="history" id="history"></div>
   </div>
 
   <div class="card">
     <div class="label">Paper results (<span id="handsTotal">0</span> hands scored)</div>
     <div class="stats">
-      <div class="stat"><div class="label">Model</div><div class="v" id="modelTotal">0.00</div><div id="modelPer" class="note"></div></div>
-      <div class="stat"><div class="label">Always Banker</div><div class="v" id="bankerTotal">0.00</div><div id="bankerPer" class="note"></div></div>
+      <div class="stat"><div class="label">Model</div><div class="v" id="modelTotal">0.00 u</div><div id="modelPer" class="note"></div></div>
+      <div class="stat"><div class="label">Always Banker</div><div class="v" id="bankerTotal">0.00 u</div><div id="bankerPer" class="note"></div></div>
     </div>
+    <p class="note verdict" id="verdict"></p>
   </div>
 </main>
 
 <script>
   const NAMES = { B: "Banker", P: "Player", T: "Tie" };
+  const MIN_HANDS = 300; // guide Step 12: several hundred hands before judging
   let shoe = [];        // outcomes in the current shoe (model input)
-  let ledger = [];      // every scored hand: {outcome, bet, modelProfit, bankerProfit, newShoeBefore}
+  let ledger = [];      // every scored hand: {outcome, bet, modelProfit, bankerProfit, shoeBefore}
   let current = null;   // latest prediction
-  let pendingNewShoe = false;
+  let loading = false;
 
   function payout(bet, o) {
     if (bet === "B") return o === "B" ? 0.95 : (o === "T" ? 0 : -1);
@@ -81,18 +132,35 @@
     return o === "T" ? 8 : -1;
   }
 
+  function setStatus(kind, html) {
+    const el = document.getElementById("status");
+    el.className = "status" + (kind ? " show " + kind : "");
+    el.innerHTML = html || "";
+  }
+
   async function predict() {
-    const res = await fetch("/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ history: shoe })
-    });
-    current = await res.json();
+    loading = true;
+    current = null;
+    setStatus("loading", "Getting the model's pick…");
+    render();
+    try {
+      const res = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ history: shoe })
+      });
+      if (!res.ok) throw new Error(`server returned ${res.status}`);
+      current = await res.json();
+      setStatus(null);
+    } catch (err) {
+      setStatus("error", `Couldn't get the model's pick (${err.message}). Check the server is running, then <button class="secondary" onclick="predict()">Try again</button>`);
+    }
+    loading = false;
     render();
   }
 
   function record(outcome) {
-    if (!current) return;
+    if (!current || loading) return;   // never score against a stale pick
     ledger.push({
       outcome, bet: current.bet,
       modelProfit: payout(current.bet, outcome),
@@ -119,13 +187,32 @@
   function fmt(x) { return (x >= 0 ? "+" : "") + x.toFixed(2); }
 
   function render() {
-    document.getElementById("bet").textContent = NAMES[current.bet];
-    document.getElementById("probs").innerHTML = ["B","P","T"].map(k =>
-      `<div><strong>${NAMES[k]}</strong><br>${(current.probs[k]*100).toFixed(1)}%</div>`).join("");
+    document.getElementById("handNo").textContent = shoe.length + 1;
+
+    const betEl = document.getElementById("bet");
+    const ready = current && !loading;
+    betEl.textContent = ready ? NAMES[current.bet] : "…";
+    betEl.className = "bet " + (ready ? current.bet : "");
+    document.getElementById("why").textContent = ready
+      ? `Highest expected value of the three bets (${fmt(current.ev[current.bet] * 100)}% per bet). Every bet loses on average; this is just the least bad.`
+      : "";
+    document.getElementById("probs").innerHTML = ready ? ["B","P","T"].map(k =>
+      `<div ${k === current.bet ? `class="pick" style="color:var(--${k.toLowerCase()})"` : ""}><strong>${NAMES[k]}</strong><br>${(current.probs[k]*100).toFixed(1)}%</div>`).join("") : "";
+    document.querySelectorAll("[data-outcome]").forEach(b => b.disabled = !ready);
 
     document.getElementById("shoeCount").textContent = shoe.length;
-    document.getElementById("history").innerHTML =
-      shoe.map(o => `<div class="dot ${o}">${o}</div>`).join("");
+    document.getElementById("history").innerHTML = shoe.length
+      ? shoe.map(o => `<div class="dot ${o}">${o}</div>`).join("")
+      : `<span class="empty">No hands yet. Results you enter appear here.</span>`;
+
+    const last = ledger[ledger.length - 1];
+    document.getElementById("lastCard").hidden = !last;
+    if (last) {
+      document.getElementById("lastText").innerHTML =
+        `Last hand: <strong>${NAMES[last.outcome]}</strong> won.`;
+      document.getElementById("lastDetail").textContent =
+        `Model bet ${NAMES[last.bet]}: ${fmt(last.modelProfit)} u · Always Banker: ${fmt(last.bankerProfit)} u. Wrong button? Undo.`;
+    }
 
     const n = ledger.length;
     const m = ledger.reduce((s, r) => s + r.modelProfit, 0);
@@ -138,7 +225,20 @@
     }
     document.getElementById("modelPer").textContent = n ? `${fmt(m / n * 100)}% per bet` : "";
     document.getElementById("bankerPer").textContent = n ? `${fmt(b / n * 100)}% per bet` : "";
+    document.getElementById("verdict").textContent = n < MIN_HANDS
+      ? `Too early to judge: ${MIN_HANDS - n} more hands until ${MIN_HANDS}. Over a short run either line can be ahead by luck.`
+      : `Compare the per-bet numbers. If they stay close, the model has no edge over always Banker.`;
   }
+
+  document.querySelectorAll("[data-outcome]").forEach(b =>
+    b.addEventListener("click", () => record(b.dataset.outcome)));
+
+  document.addEventListener("keydown", e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    if (k in NAMES) record(k);
+    else if (k === "U") undo();
+  });
 
   predict();
 </script>
