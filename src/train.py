@@ -7,12 +7,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import log_loss
 from lightgbm import LGBMClassifier
 
-from features import build_dataset
+from features import build_dataset, check_build_dataset
 from betting import payout, choose_bet
 
 ROOT = Path(__file__).resolve().parent.parent
 
 df = pd.read_csv(ROOT / "data" / "hands.csv")
+check_build_dataset(df)  # vectorised features == website's features
 X, y, groups = build_dataset(df)
 
 # 9.1 Split BY SHOE (never by random hand -> leakage)

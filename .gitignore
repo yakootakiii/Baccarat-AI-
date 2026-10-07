@@ -7,3 +7,4 @@ data/raw/*
 !data/raw/.gitkeep
 data/hands.csv
 models/*.joblib
+*.log
